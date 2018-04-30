@@ -1,58 +1,43 @@
+var express = require("express");
+var path = require("path");
+var router = express.Router();
+var friendsList = require('../data/friends.js');
 
-// LOAD DATA
-// We are linking our routes to a series of "data" sources.
-// These data sources hold arrays of information on friends.
+// middleware specific to this router
+router.use(function timeLog(req, res, next) {
+    console.log('Time: ', Date.now());
+    next();
+});
 
-
-const friendsData = require("../data/friends");
-
-// ROUTING
-
-
-module.exports = function(app) {
-  // API GET Requests
-  // Below code handles when users "visit" a page.
-  // In each of the below cases when a user visits a link
-  // (ex: localhost:PORT/api/admin... they are shown a JSON of the data in the table)
-  // ---------------------------------------------------------------------------
-
-  app.get("/api/friends", function(req, res) {
-    res.json(friendsData);
-  });
-
-  // API POST Requests
-  // Below code handles when a user submits a form and thus submits data to the server.
-  // In each of the below cases, when a user submits form data (a JSON object)
-  // ...the JSON is pushed to the appropriate JavaScript array
-  // Then the server saves the data to the friendsData array)
-  // ---------------------------------------------------------------------------
-
-  app.post("/api/friends", function(req, res) {
-    // This will be used to handle incoming survey results. This route will also be used to handle the compatibility logic.
-    newUser = req.body;
-    console.log(newUser);
-    // res.json(newUser);
-
-    const checkMatch = newUser => {
-      console.log("check match for: ", newUser);
-      friendsData.forEach(friend => {
-        let scoresToCompare = friend.scores;
-        let totalDifference = 0;
-
-        scoresToCompare.forEach(score => {
-          let difference = Math.abs(currentUser.scores[score] - score);
-          console.log(difference);
-          totalDifference += difference;
+router.post('/api/friends', function(req, res) {
+    let newSurvey = req.body;
+    let pickedFriend;
+    let friendCalc = [];
+    for (var i = 0; i < friendsList.length; i++) {
+        var totalDifference = 0;
+        for (var k = 0; k < 10; k++) {
+            let scoreDiff = Math.abs(friendsList[i].scores[k] - newSurvey.scores[k]);
+            totalDifference += scoreDiff;
+        }
+        friendCalc.push({
+            name: friendsList[i].name,
+            picture: friendsList[i].picture,
+            totalDiff: totalDifference
         });
+    }
+    let maxScore = 40;
+    friendCalc.map(function(obj) {
+        if (obj.totalDiff < maxScore) maxScore = obj.totalDiff;
+    });
+    pickedFriend = friendCalc.filter(function(e) { return e.totalDiff == maxScore; });
 
-        console.log(totalDifference);
-      });
-    };
+    res.json(pickedFriend);
+    friendsList.push(newSurvey);
 
-    checkMatch(newUser);
-  });
-};
+});
 
-// console.log(friendsData);
+router.get('/api/friends', function(req, res) {
+    res.json(friendsList);
+});
 
-// checkCompatability(friendsData[0]);
+module.exports = router;
